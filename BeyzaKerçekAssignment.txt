@@ -1,0 +1,132 @@
+void setup(){
+  asm( 
+      ".EQU DDRD,0x0A\n" 
+      ".EQU DDRB,0x04\n"
+      ".EQU PORTD,0x0B\n"
+      ".EQU PORTB,0x05\n"
+      ".EQU PIND,0x09\n"
+      ".EQU PINB,0x03\n"
+     
+      ".EQU EECR,0x1F \n"
+      ".EQU EEDR,0x20 \n"
+      ".EQU EEARL,0x21 \n"
+      ".EQU EEARH,0x22 \n"
+      
+      ".EQU EERE,0 \n"
+      ".EQU EEWE,1 \n"
+      ".EQU EEMWE,2 \n"
+    
+      ".EQU PCMSK0, 0x6B  \n"
+      ".EQU PCMSK2, 0x6D  \n"
+      
+      ".EQU PCIFR,0x1B \n"
+	  ".EQU PCICR,0x68  \n"
+
+      "LDI R16, 0B00000100\n"
+      "OUT DDRD,R16\n" //specifies input or output
+      
+      "LDI R17, 0B00000000\n"
+      "OUT DDRB,R17\n" //specifies input or output
+   
+    
+      //PIR
+      "LDI R19,0B00001000\n"  
+      "STS PCMSK2,R19\n" 			
+   	
+    
+      //pushbutton
+      "LDI R19,0B00000001\n"		
+      "STS PCMSK0,R19\n" //specify pin
+    
+      "LDI R19,0B00000101\n"
+      "STS PCICR,R19\n" 
+    
+      "LDI R19,0B00000101\n"
+      "STS PCIFR,R19\n"   
+
+      "SEI\n"
+      
+  ); 
+}
+
+byte counter;
+  
+void loop(){
+  asm(
+    "LDI R16, 0X3A\n"
+    "LDI R17, 0X02\n"
+    
+    
+    "CONTROL: \n"
+    "SBIC EECR, EEWE \n"
+    "RJMP CONTROL \n"      
+       
+    "OUT EEARL,R16\n"
+   	"OUT EEARH,R17\n"
+    "SBI EECR, EERE \n"
+    "IN R18,EEDR \n"
+    
+    
+    "MOV %0, R18\n"    
+ 	:"=r"(counter) 
+       
+  );
+}   
+
+ISR (PCINT2_vect){//PIR
+     asm(
+       "SBIS PIND,3\n" //checks 3rd pin which is purple cable's pin
+	"RJMP motionless\n"
+     	
+       "LDI R17,0X02\n"
+       "LDI R16, 0X3A\n"
+      
+       "LDI R19,0B00000100\n"
+       "OUT PORTD,R19\n"
+       
+       
+       "CONTROL2: \n"
+       "SBIC EECR, EEWE \n"
+       "RJMP CONTROL2 \n"      
+       
+       
+       "OUT EEARL,R16\n"
+       "OUT EEARH,R17\n"
+       
+       "SBI EECR, EERE \n"
+       "IN R18,EEDR \n"
+       "INC R18\n"
+       
+       "CONTROL3:\n"
+       "SBIC EECR, EEWE \n"
+       "RJMP CONTROL3 \n"      
+       
+       "OUT EEARL,R16\n"
+       "OUT EEARH,R17\n"
+       "OUT EEDR, R18\n"
+    
+       "SBI EECR, EEMWE \n"
+       "SBI EECR, EEWE\n"
+       
+       "motionless:\n" //no motion
+
+     );
+     Serial.begin(9600);
+     Serial.print("ALARM!!!\n");
+     Serial.print("Alarm was triggered ");
+     Serial.print(counter);
+     Serial.print(" times\n");
+    } 
+
+ISR (PCINT0_vect){ //Push Button    
+  
+  asm(
+      "LDI R19,0B00000000\n"
+      "OUT PORTD,R19\n"
+     );
+    
+     Serial.print("Alarm turned off.\n");
+
+}
+      
+      
